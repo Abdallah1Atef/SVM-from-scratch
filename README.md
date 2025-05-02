@@ -79,8 +79,57 @@ A from-scratch implementation of Support Vector Machines (SVM) using both gradie
 ```python
 def train_svm(X, y, X_val, y_val, method="gradient", lr=0.01, epochs=1000, reg=0.01):
     """Train SVM with either gradient or subgradient descent"""
-    # Implementation details...
+    n_features = X.shape[1]
+    w = np.zeros(n_features)
+    b = 0
+    loss_hist, acc_hist = [], []
+    val_loss_hist, val_acc_hist = [], []
+
+    for epoch in range(epochs):
+        # Compute gradient and losses
+        if method == "gradient":
+            dw, db = logistic_gradient(w, b, X, y, reg)
+            train_loss = logistic_loss(w, b, X, y, reg)
+            val_loss = logistic_loss(w, b, X_val, y_val, reg)
+        elif method == "subgradient":
+            margins = 1 - y * (X.dot(w) + b)
+            mask = margins > 0
+            #(max for the requlerization equation )
+            grad_contrib = (-y[:, None] * X) * mask[:, None]
+            #(result from differatiation of the  regulaization equation acording to W (weights))
+            dw = np.mean(grad_contrib, axis=0) + 2 * reg * w
+            #(result from differatiation of the  regulaization equation acording to b )
+            db = np.mean(-y * mask)
+            train_loss = hinge_loss(w, b, X, y, reg)
+            val_loss = hinge_loss(w, b, X_val, y_val, reg)
+        else:
+            raise ValueError("Unknown method")
+
+        # Update parameters
+        w -= lr * dw
+        b -= lr * db
+
+        # Record metrics
+        loss_hist.append(train_loss)
+        acc = np.mean(np.sign(X.dot(w) + b) == y)
+        acc_hist.append(acc)
+        val_loss_hist.append(val_loss)
+        val_acc = np.mean(np.sign(X_val.dot(w) + b) == y_val)
+        val_acc_hist.append(val_acc)
+
+        # Early stopping: check loss convergence
+        if epoch > 0 and abs(val_loss_hist[-1] - val_loss_hist[-2]) <= tol:
+            break
+
+    return w, b, loss_hist, acc_hist, val_loss_hist, val_acc_hist
 ```
+## Visualization
+![image](https://github.com/user-attachments/assets/bf9fc4e7-92c8-4418-99b2-b973cb21923b)
+![image](https://github.com/user-attachments/assets/e15d41e3-49c1-49ee-9865-d852ee330b5c)
+![image](https://github.com/user-attachments/assets/af101e97-4585-4a11-b958-07ed1301d83d)
+
+
+
 🔧 **Core Features**:
 - Dual optimization approaches:  
   - *Gradient Descent* with logistic loss (smooth optimization)  
